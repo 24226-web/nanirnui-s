@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>카디안(Cardian) - AI 자동차 이상 진단 판독기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #1e272e, #0f141c);
+      font-family: 'Malgun Gothic', Arial, sans-serif;
+      color: #d2dae2;
+    }
+
+    .container {
+      width: 450px;
+      padding: 30px;
+      border-radius: 28px;
+      background: #2f3640;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      border: 1px solid #485460;
+    }
+
+    h1 {
+      margin: 0 0 5px;
+      text-align: center;
+      font-size: 32px;
+      color: #00d2d3;
+      letter-spacing: 2px;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #9c88ff;
+      font-size: 13px;
+      margin-bottom: 25px;
+      font-weight: bold;
+    }
+
+    /* 인증 및 내비게이션 폼 */
+    .auth-section, .app-section { display: none; }
+    .active { display: block; }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+    input[type="email"], input[type="password"], input[type="text"] {
+      width: 100%;
+      height: 50px;
+      padding: 12px;
+      border: 1px solid #485460;
+      border-radius: 12px;
+      background: #1e2124;
+      color: white;
+      font-size: 15px;
+      outline: none;
+    }
+    input:focus { border-color: #00d2d3; }
+
+    .btn-row { display: flex; gap: 10px; margin-bottom: 10px; }
+
+    /* 차량 진단 메인 보드 UI */
+    .user-info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      background: #212529;
+      padding: 10px 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    .upload-area {
+      border: 2px dashed #00d2d3;
+      padding: 30px 15px;
+      text-align: center;
+      border-radius: 16px;
+      background: #353b48;
+      cursor: pointer;
+      transition: 0.2s;
+      margin-bottom: 20px;
+    }
+    .upload-area:hover { background: #414b5c; border-color: #1dd1a1; }
+
+    #preview-img {
+      max-width: 100%;
+      max-height: 180px;
+      border-radius: 8px;
+      display: none;
+      margin-top: 15px;
+      border: 1px solid #485460;
+    }
+
+    #result-box {
+      background: #1e2124;
+      padding: 20px;
+      border-radius: 14px;
+      min-height: 110px;
+      font-size: 14px;
+      line-height: 1.7;
+      border-left: 5px solid #00d2d3;
+      margin-bottom: 20px;
+      white-space: pre-wrap;
+      color: #f5f6fa;
+    }
+
+    button {
+      width: 100%;
+      height: 54px;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    button:hover { transform: translateY(-1px); }
+
+    .btn-primary { background: #00d2d3; color: #1e272e; }
+    .btn-primary:hover { background: #1dd1a1; color: white; }
+    .btn-secondary { background: #57606f; color: white; }
+    .btn-secondary:hover { background: #4b5462; }
+    .btn-accent { background: #fbc531; color: #1e272e; display: none; }
+    .btn-accent:hover { background: #e1b12c; color: white; }
+    .btn-danger { background: #eb4d4b; color: white; height: 35px; width: auto; padding: 0 10px; font-size: 12px; border-radius: 6px; }
+
+    .guide {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 12px;
+      color: #718093;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🛡️ CARDIAN</h1>
+  <div class="subtitle">AI 자동차 이상 진단 판독 스캐너</div>
+
+  <div id="auth-panel" class="auth-section active">
+    <div class="input-group">
+      <input type="email" id="auth-email" placeholder="이메일 주소 입력" />
+    </div>
+    <div class="input-group">
+      <input type="password" id="auth-password" placeholder="비밀번호 입력" />
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="btn-login">로그인</button>
+      <button class="btn-secondary" id="btn-signup">회원가입</button>
+    </div>
+    <div class="guide">기록 저장을 위해 로그인이 필요합니다.</div>
+  </div>
+
+  <div id="app-panel" class="app-section">
+    <div class="user-info-bar">
+      <span id="user-display">운전자님 환영합니다</span>
+      <button class="btn-danger" id="btn-logout">로그아웃</button>
+    </div>
+
+    <div class="upload-area" id="drop-zone">
+      <span id="upload-hint">📸 클릭하여 진단할 차량 사진을 등록하세요</span>
+      <input type="file" id="car-file" accept="image/*" style="display: none;" />
+      <img id="preview-img" alt="차량 진단 이미지 미리보기" />
+    </div>
+
+    <div class="input-group">
+      <input type="password" id="openai-key-input" placeholder="🔑 여기에 OpenAI API Key (sk-...) 입력" />
+    </div>
+
+    <div id="result-box">차량 상태 사진을 업로드하고 API Key를 입력한 후 '스마트 AI 진단 시작' 버튼을 눌러주세요.</div>
+
+    <button class="btn-primary" id="btn-scan" style="margin-bottom: 12px;">🔍 스마트 AI 진단 시작</button>
+    <button class="btn-accent" id="btn-save">💾 정비 일지(Realtime DB)에 기록 보관</button>
+    
+    <div class="guide">Powered by OpenAI Vision & Firebase Realtime Database</div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  
+  // 🔗 [변경] Firestore 대신 Realtime Database 모듈을 불러옵니다.
+  import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  // -------------------------------------------------------------
+  // ⚙️ [주의] Realtime Database를 쓸 때는 databaseURL 항목이 있어야 안정적입니다.
+  // 콘솔에서 본인의 databaseURL을 확인하고 아래에 추가해 주세요!
+  // -------------------------------------------------------------
+ const firebaseConfig = {
+  apiKey: "AIzaSyCVqvYIHidnIxmMzzGIGJF3iyQGMeY43RY",
+  authDomain: "naniruni-cdc36.firebaseapp.com",
+  projectId: "naniruni-cdc36",
+  storageBucket: "naniruni-cdc36.firebasestorage.app",
+  messagingSenderId: "978237059916",
+  appId: "1:978237059916:web:95c2fb8e2b80cdba6b95e9",
+  measurementId: "G-9F8XZ85DNM"
+  databaseURL: "https://naniruni-cdc36-default-rtdb.firebaseio.com"
+};
+  // 서비스 인스턴스 초기화
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app); // 🔗 [변경] Realtime DB 인스턴스 가져오기
+
+  let base64CarImage = "";
+  let currentDiagnosisText = "";
+  let currentUser = null;
+
+  /* ==========================================
+     🔒 관문 1: Firebase Auth 로그인 상태 분기 제어
+     ========================================== */
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      currentUser = user;
+      document.getElementById("user-display").innerText = `${user.email.split('@')[0]} 운전자님`;
+      document.getElementById("auth-panel").classList.remove("active");
+      document.getElementById("app-panel").classList.add("active");
+    } else {
+      currentUser = null;
+      document.getElementById("auth-panel").classList.add("active");
+      document.getElementById("app-panel").classList.remove("active");
+      resetAppForm();
+    }
+  });
+
+  // 회원가입 프로세스
+  document.getElementById("btn-signup").addEventListener("click", async () => {
+    const email = document.getElementById("auth-email").value;
+    const password = document.getElementById("auth-password").value;
+    if(!email || !password) return alert("이메일과 비밀번호를 입력하세요.");
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      alert("카디안 회원가입을 축하합니다! 자동으로 로그인됩니다.");
+    } catch (err) { alert(`회원가입 실패: ${err.message}`); }
+  });
+
+  // 로그인 프로세스
+  document.getElementById("btn-login").addEventListener("click", async () => {
+    const email = document.getElementById("auth-email").value;
+    const password = document.getElementById("auth-password").value;
+    if(!email || !password) return alert("이메일과 비밀번호를 입력하세요.");
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) { alert(`로그인 실패: ${err.message}`); }
+  });
+
+  // 로그아웃 프로세스
+  document.getElementById("btn-logout").addEventListener("click", () => signOut(auth));
+
+  /* ==========================================
+     📸 관문 2: 파일 업로드 및 이미지 바이너리 변환 로직
+     ========================================== */
+  document.getElementById('drop-zone').addEventListener('click', () => document.getElementById('car-file').click());
+
+  document.getElementById('car-file').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById("preview-img").src = e.target.result;
+        document.getElementById("preview-img").style.display = "block";
+        document.getElementById("upload-hint").innerText = "🔄 다른 사진으로 교체";
+        base64CarImage = e.target.result.split(",")[1];
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  /* ==========================================
+     🧠 관문 3: OpenAI Vision API 호출 및 커스텀 TTS 연동
+     ========================================== */
+  document.getElementById("btn-scan").addEventListener("click", async () => {
+    if (!base64CarImage) return alert("진단할 자동차 상태 사진을 먼저 등록해 주세요! 🚗");
+    
+    const openAiApiKey = document.getElementById("openai-key-input").value.trim();
+    if (!openAiApiKey) return alert("OpenAI API Key를 입력해 주세요!");
+    if (!openAiApiKey.startsWith("sk-")) return alert("올바른 OpenAI API Key 형식이 아닙니다.");
+
+    document.getElementById("result-box").innerText = "⚙️ 카디안 원격 스캐너 작동 중... AI가 이미지를 추출 및 판독하고 있습니다.";
+    
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openAiApiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "너는 20년 경력의 베테랑 자동차 정비 명장이야. 첨부된 사진 속 차량의 상태(계기판 경고등 종류, 타이어 상태, 엔진룸 등)를 면밀히 판독해 줘. 그리고 아래 [출력 규격]에 맞춰서 딱 3문장으로 브리핑해 줘.\n\n[출력 규격]\n1줄: 판독된 증상 이름 및 위험도 수치 (예: 엔진오일 압력 경고등 감지 / [🚨 긴급])\n2줄: 이 증상이 발생한 구체적인 기계적 원인 설명\n3줄: 지금 운전자가 당장 취해야 할 안전한 대처법 및 정비소 방문 권장 행동"
+                },
+                {
+                  type: "image_url",
+                  image_url: { url: `data:image/jpeg;base64,${base64CarImage}` }
+                }
+              ]
+            }
+          ],
+          max_tokens: 400
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "API 요청에 실패했습니다.");
+      }
+
+      const data = await response.json();
+      currentDiagnosisText = data.choices[0].message.content;
+      document.getElementById("result-box").innerText = currentDiagnosisText;
+      
+      document.getElementById("btn-save").style.display = "block"; 
+      speakCarExpertTTS(currentDiagnosisText); 
+
+    } catch (error) {
+      console.error(error);
+      document.getElementById("result-box").innerText = `차량 진단 중 오류가 발생했습니다.\n이유: ${error.message}`;
+    }
+  });
+
+  /* ==========================================
+     🔊 관문 4: 브라우저 고유 Web Speech API 활용 (명장 TTS 튜닝)
+     ========================================== */
+  function speakCarExpertTTS(text) {
+    if (typeof SpeechSynthesisUtterance === "undefined") return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "ko-KR";
+    utterance.rate = 0.92;
+    utterance.pitch = 0.85;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  /* ==========================================
+     💾 관문 5: [변경] Realtime Database 실시간 데이터 저장
+     ========================================== */
+  document.getElementById("btn-save").addEventListener("click", async () => {
+    if (!currentDiagnosisText || !currentUser) return;
+    try {
+      document.getElementById("btn-save").innerText = "⏳ 정비 일지 기록 중...";
+      
+      // 🔗 Realtime DB의 'car_logs' 노드에 push() 함수로 데이터 추가
+      const logRef = ref(db, 'car_logs');
+      await push(logRef, {
+        uid: currentUser.uid,
+        userEmail: currentUser.email,
+        diagnosis: currentDiagnosisText,
+        createdAt: serverTimestamp() // 실시간 DB용 타임스탬프
+      });
+
+      alert(`🎉 [Realtime DB 저장 완료] 고유 정비 일지에 실시간으로 내역이 등록되었습니다!`);
+      document.getElementById("btn-save").innerText = "💾 정비 일지(Realtime DB)에 기록 보관";
+
+    } catch (e) {
+      console.error(e);
+      alert("Realtime Database 업로드 실패. Firebase 콘솔의 Rules(규칙) 탭을 확인하세요.");
+    }
+  });
+
+  function resetAppForm() {
+    base64CarImage = "";
+    currentDiagnosisText = "";
+    document.getElementById("preview-img").style.display = "none";
+    document.getElementById("upload-hint").innerText = "📸 클릭하여 진단할 차량 사진을 등록하세요";
+    document.getElementById("openai-key-input").value = "";
+    document.getElementById("result-box").innerText = "차량 상태 사진을 업로드한 후 '스마트 AI 진단 시작' 버튼을 눌러주세요.";
+    document.getElementById("btn-save").style.display = "none";
+    window.speechSynthesis.cancel();
+  }
+</script>
+</body>
+</html>
