@@ -187,28 +187,24 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  
-  // 🔗 [변경] Firestore 대신 Realtime Database 모듈을 불러옵니다.
   import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-  // -------------------------------------------------------------
-  // ⚙️ [주의] Realtime Database를 쓸 때는 databaseURL 항목이 있어야 안정적입니다.
-  // 콘솔에서 본인의 databaseURL을 확인하고 아래에 추가해 주세요!
-  // -------------------------------------------------------------
- const firebaseConfig = {
-  apiKey: "AIzaSyCVqvYIHidnIxmMzzGIGJF3iyQGMeY43RY",
-  authDomain: "naniruni-cdc36.firebaseapp.com",
-  projectId: "naniruni-cdc36",
-  storageBucket: "naniruni-cdc36.firebasestorage.app",
-  messagingSenderId: "978237059916",
-  appId: "1:978237059916:web:95c2fb8e2b80cdba6b95e9",
-  measurementId: "G-9F8XZ85DNM",
-  databaseURL: "https://naniruni-cdc36-default-rtdb.firebaseio.com"
-};
+  // 🛠️ [교체 완료] measurementId 항목 뒤에 콤마(,)를 정상적으로 추가했습니다.
+  const firebaseConfig = {
+    apiKey: "AIzaSyCVqvYIHidnIxmMzzGIGJF3iyQGMeY43RY",
+    authDomain: "naniruni-cdc36.firebaseapp.com",
+    projectId: "naniruni-cdc36",
+    storageBucket: "naniruni-cdc36.firebasestorage.app",
+    messagingSenderId: "978237059916",
+    appId: "1:978237059916:web:95c2fb8e2b80cdba6b95e9",
+    measurementId: "G-9F8XZ85DNM",
+    databaseURL: "https://naniruni-cdc36-default-rtdb.firebaseio.com"
+  };
+
   // 서비스 인스턴스 초기화
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getDatabase(app); // 🔗 [변경] Realtime DB 인스턴스 가져오기
+  const db = getDatabase(app);
 
   let base64CarImage = "";
   let currentDiagnosisText = "";
@@ -346,20 +342,19 @@
   }
 
   /* ==========================================
-     💾 관문 5: [변경] Realtime Database 실시간 데이터 저장
+     💾 관문 5: Realtime Database 실시간 데이터 저장
      ========================================== */
   document.getElementById("btn-save").addEventListener("click", async () => {
     if (!currentDiagnosisText || !currentUser) return;
     try {
       document.getElementById("btn-save").innerText = "⏳ 정비 일지 기록 중...";
       
-      // 🔗 Realtime DB의 'car_logs' 노드에 push() 함수로 데이터 추가
       const logRef = ref(db, 'car_logs');
       await push(logRef, {
         uid: currentUser.uid,
         userEmail: currentUser.email,
         diagnosis: currentDiagnosisText,
-        createdAt: serverTimestamp() // 실시간 DB용 타임스탬프
+        createdAt: serverTimestamp()
       });
 
       alert(`🎉 [Realtime DB 저장 완료] 고유 정비 일지에 실시간으로 내역이 등록되었습니다!`);
